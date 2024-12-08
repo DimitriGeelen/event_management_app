@@ -154,4 +154,83 @@ if grep -i "error" "$NPM_LOG_DIR/npm-install.log"; then
     bash ./scripts/npm-fix.sh
 fi
 
-[Rest of the installation script...]
+# Configure Nginx for LAN access
+log "Configuring Nginx..."
+cat > /etc/nginx/sites-available/event-management << EOL
+server {
+    listen 80;
+    server_name $IP_ADDRESS;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    location /api {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    location /grafana/ {
+        proxy_pass http://localhost:3000/;
+    }
+
+    location /kibana/ {
+        proxy_pass http://localhost:5601/;
+    }
+}
+EOL
+
+# Enable Nginx site
+ln -sf /etc/nginx/sites-available/event-management /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Configure firewall
+log "Configuring firewall..."
+ufw allow ssh
+ufw allow http
+ufw allow from 192.168.0.0/16 to any port 3000
+ufw allow from 192.168.0.0/16 to any port 5000
+ufw allow from 192.168.0.0/16 to any port 27017
+ufw allow from 192.168.0.0/16 to any port 9090
+ufw allow from 192.168.0.0/16 to any port 5601
+
+# Enable firewall
+echo "y" | ufw enable
+
+# Start services
+log "Starting services..."
+systemctl restart nginx
+docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Set correct permissions
+chown -R www-data:www-data "${APP_DIR}"
+chmod -R 755 "${APP_DIR}"
+
+# Create uploads directory with proper permissions
+mkdir -p "${APP_DIR}/uploads"
+chown -R www-data:www-data "${APP_DIR}/uploads"
+chmod -R 755 "${APP_DIR}/uploads"
+
+log "Installation completed!"
+log "Application is available at: http://${IP_ADDRESS}"
+log "Monitoring dashboard: http://${IP_ADDRESS}/grafana"
+log "Logs dashboard: http://${IP_ADDRESS}/kibana"
+
+# Print credentials
+log "\nCredentials:"
+log "MongoDB Root Username: admin"
+log "MongoDB Root Password: $(grep MONGO_ROOT_PASSWORD .env | cut -d'=' -f2)"
+log "Grafana Admin Password: $(grep GRAFANA_PASSWORD .env | cut -d'=' -f2)"
+
+warning "\nPlease save these credentials in a secure location!"
+warning "For security, consider changing the default passwords."
