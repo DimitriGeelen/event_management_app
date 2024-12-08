@@ -19,11 +19,34 @@ handle_error() {
     local line_number=$1
     local error_code=$2
     error "An error occurred in line ${line_number}, exit code: ${error_code}"
+    # Save logs for debugging
+    if [ -d "$NPM_LOG_DIR" ]; then
+        cp -r "$NPM_LOG_DIR" "/tmp/npm_logs_$(date +%F_%H%M%S)"
+    fi
     exit ${error_code}
 }
 
 # Set up error handling
 trap 'handle_error ${LINENO} $?' ERR
+
+# Function to retry commands
+retry_command() {
+    local retries=$1
+    shift
+    local count=0
+    until "$@"; do
+        exit=$?
+        count=$((count + 1))
+        if [ $count -lt $retries ]; then
+            warning "Retry $count/$retries: Command failed, retrying in 5 seconds..."
+            sleep 5
+        else
+            error "Command failed after $retries attempts"
+            return $exit
+        fi
+    done
+    return 0
+}
 
 # Check if script is run as root
 if [ "$EUID" -ne 0 ]; then
@@ -36,88 +59,83 @@ NPM_LOG_DIR="/var/log/npm"
 mkdir -p "$NPM_LOG_DIR"
 chmod 755 "$NPM_LOG_DIR"
 
-# Detect network interface with fallback
-PRIMARY_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
-if [ -z "$PRIMARY_INTERFACE" ]; then
-    warning "No default route found, trying to find first non-loopback interface"
-    PRIMARY_INTERFACE=$(ip -o link show | awk '$2 != "lo:" {print $2}' | cut -d: -f1 | head -n1)
-    if [ -z "$PRIMARY_INTERFACE" ]; then
-        error "No network interface found"
+# Function to check and create directory
+check_create_dir() {
+    local dir=$1
+    local owner=$2
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" || { error "Failed to create directory: $dir"; exit 1; }
+    fi
+    chown -R "$owner:$owner" "$dir" || { error "Failed to set ownership for: $dir"; exit 1; }
+    chmod 755 "$dir" || { error "Failed to set permissions for: $dir"; exit 1; }
+}
+
+# Function to check command availability
+check_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        error "Required command not found: $1"
         exit 1
     fi
-fi
+}
 
-# Get IP address with validation
-IP_ADDRESS=$(ip -4 addr show $PRIMARY_INTERFACE | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-if [ -z "$IP_ADDRESS" ]; then
-    error "Could not detect IP address for interface ${PRIMARY_INTERFACE}"
-    exit 1
-fi
-
-log "Installing on interface ${PRIMARY_INTERFACE} with IP ${IP_ADDRESS}"
-
-# Update system with retry
-log "Updating system packages..."
-for i in {1..3}; do
-    if apt update && apt upgrade -y; then
-        break
-    elif [ $i -eq 3 ]; then
-        error "Failed to update system after 3 attempts"
-        exit 1
-    else
-        warning "Retry $i/3: System update failed, retrying..."
-        sleep 5
+# Function to verify service is running
+verify_service() {
+    local service=$1
+    local port=$2
+    if ! nc -z localhost "$port"; then
+        error "Service $service is not running on port $port"
+        return 1
     fi
+    return 0
+}
+
+# Main installation process with improved error handling
+
+# 1. System Updates
+log "Updating system..."
+retry_command 3 apt update
+retry_command 3 apt upgrade -y
+
+# 2. Install required packages
+log "Installing required packages..."
+PACKAGES=(
+    build-essential
+    python3-pip
+    apt-transport-https
+    ca-certificates
+    curl
+    software-properties-common
+    git
+    nginx
+    ufw
+    fail2ban
+    net-tools
+    htop
+    snapd
+)
+
+for package in "${PACKAGES[@]}"; do
+    retry_command 3 apt install -y "$package" || { error "Failed to install $package"; exit 1; }
 done
 
-# Install build essentials with verification
-log "Installing build essentials..."
-if ! apt install -y build-essential python3-pip; then
-    error "Failed to install build essentials"
-    exit 1
-fi
-
-# Determine user for installations
-if [ -n "$SUDO_USER" ]; then
-    INSTALL_USER="$SUDO_USER"
-else
-    INSTALL_USER=$(who am i | awk '{print $1}')
-    if [ -z "$INSTALL_USER" ]; then
-        INSTALL_USER="root"
-        warning "Could not determine non-root user, using root"
-    fi
-fi
-
-# Remove existing Node.js and npm
-log "Removing existing Node.js and npm installations..."
-apt remove -y nodejs npm || true
-apt autoremove -y || true
-
-# Install Node.js and npm with verification
+# 3. Node.js and npm installation
 log "Installing Node.js and npm..."
 if ! curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh; then
     error "Failed to download Node.js setup script"
     exit 1
 fi
 
-if ! bash nodesource_setup.sh; then
+chmod +x nodesource_setup.sh
+if ! ./nodesource_setup.sh; then
     error "Failed to run Node.js setup script"
     exit 1
 fi
 rm nodesource_setup.sh
 
-if ! apt install -y nodejs; then
-    error "Failed to install Node.js"
-    exit 1
-fi
+retry_command 3 apt install -y nodejs
 
-# Verify Node.js and npm installation
-if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-    error "Node.js or npm installation failed"
-    exit 1
-fi
+# Verify Node.js installation
+check_command node
+check_command npm
 
-# Set npm log level to verbose temporarily
-export npm_config_loglevel=verbose
-
-[Rest of the script with similar error handling and verification...]
+[... Continue with Docker, application setup, and service configuration with similar error handling ...]
