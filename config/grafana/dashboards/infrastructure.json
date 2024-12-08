@@ -1,0 +1,130 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 2,
+  "links": [],
+  "panels": [
+    {
+      "title": "Infrastructure Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "Container CPU Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]) * 100",
+              "legendFormat": "{{container}}"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "CPU Usage",
+              "max": 100
+            }
+          ]
+        },
+        {
+          "title": "Container Memory Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "container_memory_usage_bytes{container!=\"\"} / 1024 / 1024",
+              "legendFormat": "{{container}}"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "mbytes",
+              "label": "Memory Usage"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Network Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "Network Traffic",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(container_network_receive_bytes_total{container!=\"\"}[5m])",
+              "legendFormat": "{{container}} Receive"
+            },
+            {
+              "expr": "rate(container_network_transmit_bytes_total{container!=\"\"}[5m])",
+              "legendFormat": "{{container}} Transmit"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "bytes",
+              "label": "Traffic"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Disk Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "Disk Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "(container_fs_usage_bytes{container!=\"\"} / container_fs_limit_bytes{container!=\"\"}) * 100",
+              "legendFormat": "{{container}}"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "Disk Usage",
+              "max": 100
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": ["infrastructure", "containers"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Infrastructure Dashboard",
+  "uid": "infrastructure",
+  "version": 1
+}

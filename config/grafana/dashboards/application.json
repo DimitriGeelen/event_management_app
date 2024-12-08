@@ -1,0 +1,147 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Application Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "API Response Time",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(http_request_duration_seconds_sum{job=\"nodejs\"}[5m]) / rate(http_request_duration_seconds_count{job=\"nodejs\"}[5m])",
+              "legendFormat": "{{route}}"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Response Time"
+            }
+          ]
+        },
+        {
+          "title": "Request Rate",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(http_requests_total{job=\"nodejs\"}[5m])",
+              "legendFormat": "{{method}} {{route}}"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "Requests/sec"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "System Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "Memory Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "process_resident_memory_bytes{job=\"nodejs\"} / 1024 / 1024",
+              "legendFormat": "Memory (MB)"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "mbytes",
+              "label": "Memory Usage"
+            }
+          ]
+        },
+        {
+          "title": "CPU Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(process_cpu_seconds_total{job=\"nodejs\"}[1m]) * 100",
+              "legendFormat": "CPU %"
+            }
+          ],
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "CPU Usage",
+              "max": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Database Metrics",
+      "type": "row",
+      "panels": [
+        {
+          "title": "MongoDB Connections",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "mongodb_connections{state=\"current\"}",
+              "legendFormat": "Current Connections"
+            }
+          ]
+        },
+        {
+          "title": "MongoDB Operations",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(mongodb_op_counters_total[5m])",
+              "legendFormat": "{{type}}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": ["nodejs", "application"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Application Dashboard",
+  "uid": "application",
+  "version": 1
+}
