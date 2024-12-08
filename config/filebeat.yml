@@ -1,0 +1,34 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/nginx/access.log
+    - /var/log/nginx/error.log
+  fields:
+    type: nginx
+
+- type: log
+  enabled: true
+  paths:
+    - /app/logs/*.log
+  fields:
+    type: application
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  indices:
+    - index: "nginx-%{[agent.version]}-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.type: "nginx"
+    - index: "application-%{[agent.version]}-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.type: "application"
+
+setup.kibana:
+  host: "kibana:5601"
+
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
