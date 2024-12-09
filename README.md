@@ -2,6 +2,18 @@
 
 A modern event management application with location-based features, file uploads, and filtering capabilities.
 
+## Quick Start
+
+### Automatic Installation (Ubuntu 24.04)
+
+```bash
+curl -O https://raw.githubusercontent.com/DimitriGeelen/event_management_app/main/install_lan.sh
+chmod +x install_lan.sh
+sudo ./install_lan.sh
+```
+
+For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
+
 ## Features
 
 - Create and manage events with detailed information
@@ -13,10 +25,20 @@ A modern event management application with location-based features, file uploads
 - Radius-based location search
 - Admin tag management
 - Modern, responsive UI
-- Authentication and authorization
-- Real-time notifications
-- Confirmation dialogs
-- File drag and drop support
+
+## Documentation
+
+- [Installation Guide](INSTALLATION.md) - Detailed installation instructions
+- [Development Guide](DEVELOPMENT.md) - Guide for developers
+- [API Documentation](docs/API.md) - API endpoints and usage
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute
+
+## System Requirements
+
+- Ubuntu 24.04 LTS
+- 4GB RAM minimum
+- 20GB disk space
+- Internet connection
 
 ## Tech Stack
 
@@ -25,137 +47,134 @@ A modern event management application with location-based features, file uploads
 - React Router for routing
 - Tailwind CSS for styling
 - Lucide React for icons
-- Context API for state management
-- Custom hooks for reusable logic
-- Responsive design
 
 ### Backend
 - Node.js
 - Express.js
-- MongoDB with Mongoose
-- JWT for authentication
-- Multer for file uploads
-- Express Validator for input validation
-
-## Setup Instructions
-
-### Prerequisites
-- Node.js (v14 or higher)
 - MongoDB
-- npm or yarn
+- JWT for authentication
 
-### Environment Variables
+### Infrastructure
+- Docker
+- Nginx
+- PM2 Process Manager
 
-Create a `.env` file in the root directory with the following variables:
+### Monitoring
+- Prometheus
+- Grafana
+- ELK Stack (Elasticsearch, Logstash, Kibana)
 
-```env
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret_key
-PORT=5000
-```
-
-### Installation
+## Development Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/event_management_app.git
+git clone https://github.com/DimitriGeelen/event_management_app.git
 cd event_management_app
 ```
 
-2. Install backend dependencies:
+2. Install dependencies:
 ```bash
+# Backend dependencies
 npm install
-```
 
-3. Install frontend dependencies:
-```bash
+# Frontend dependencies
 cd frontend
 npm install
 ```
 
-### Running the Application
-
-1. Start the backend server:
+3. Create environment file:
 ```bash
-# From the root directory
-npm run server
+cp .env.example .env
+# Edit .env with your settings
 ```
 
-2. Start the frontend development server:
+4. Start development servers:
 ```bash
-# From the frontend directory
+# Backend
+npm run dev
+
+# Frontend (in another terminal)
+cd frontend
 npm start
 ```
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
+## Production Deployment
 
-## Project Structure
-
-```
-event_management_app/
-├── backend/
-│   ├── models/          # Database models
-│   ├── routes/          # API routes
-│   ├── middleware/      # Custom middleware
-│   └── server.js        # Server entry point
-├── frontend/
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── context/     # Context providers
-│   │   ├── hooks/       # Custom hooks
-│   │   └── services/    # API services
-│   ├── public/          # Static files
-│   └── package.json     # Frontend dependencies
-└── package.json         # Backend dependencies
+1. Build frontend:
+```bash
+cd frontend
+npm run build
 ```
 
-## API Endpoints
-
-### Events
-- `GET /api/events` - Get all events with filtering
-- `POST /api/events` - Create a new event
-- `PUT /api/events/:id` - Update an event
-- `DELETE /api/events/:id` - Delete an event
-
-### Tags
-- `GET /api/tags` - Get all tags
-- `POST /api/tags` - Create a new tag (admin only)
-- `PUT /api/tags/:id` - Update a tag (admin only)
-- `DELETE /api/tags/:id` - Delete a tag (admin only)
-
-### Authentication
-- `POST /api/users/register` - Register a new user
-- `POST /api/users/login` - Login user
-- `GET /api/users/me` - Get current user
-- `PUT /api/users/me` - Update user profile
-
-## Components
-
-### UI Components
-- `Layout` - Main application layout with navigation
-- `EventForm` - Form for creating/editing events
-- `EventList` - List of events with filtering
-- `TagManagement` - Admin interface for managing tags
-- `FileUploadAdvanced` - File upload with drag and drop
-- `NotificationSystem` - Toast notifications
-- `ModalSystem` - Modal dialogs
-- `ConfirmationDialog` - Confirmation dialogs
-
-### Context Providers
-- `AuthProvider` - Authentication state management
-- `NotificationProvider` - Notification state management
-- `ModalProvider` - Modal state management
+2. Start production services:
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create your feature branch
+```bash
+git checkout -b feature/amazing-feature
+```
+
+3. Commit your changes
+```bash
+git commit -m 'Add some amazing feature'
+```
+
+4. Push to the branch
+```bash
+git push origin feature/amazing-feature
+```
+
 5. Open a Pull Request
+
+## Monitoring & Logs
+
+### Monitoring Dashboard
+- Grafana: `http://your-server/grafana`
+- Default credentials in installation logs
+
+### Log Access
+- Application logs: `/var/log/event_management`
+- Nginx logs: `/var/log/nginx`
+- Docker logs: `docker-compose logs`
+- Kibana dashboard: `http://your-server/kibana`
+
+## Backup
+
+Automatic daily backups are configured for:
+- MongoDB database
+- Uploaded files
+- Application configurations
+
+Backups are stored in `/backup/event_management`
+
+## Security
+
+- JWT authentication
+- Role-based access control
+- File upload validation
+- SQL injection protection
+- XSS protection
+- CORS configured
+- Rate limiting
+
+## Support
+
+- GitHub Issues: Create an issue in the repository
+- Documentation: Check the `/docs` directory
+- Logs: Check `/var/log` directory
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all contributors
+- Built with open source software
+- Icons by Lucide
+- UI components by shadcn/ui
