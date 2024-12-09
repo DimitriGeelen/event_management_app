@@ -139,14 +139,27 @@ git clone https://github.com/DimitriGeelen/event_management_app.git "$APP_DIR"
 cd "$APP_DIR/frontend"
 log "Setting up frontend..."
 
-# Install frontend dependencies locally first
+# Install frontend dependencies
 log "Installing frontend dependencies..."
 if ! npm install; then
-    error "Failed to install frontend dependencies"
+    error "Failed to install main frontend dependencies"
     exit 1
 fi
 
-# Test frontend build locally
+# Install Tailwind CSS and its dependencies
+log "Installing Tailwind CSS dependencies..."
+if ! npm install -D tailwindcss@latest postcss@latest autoprefixer@latest @tailwindcss/forms@latest; then
+    error "Failed to install Tailwind CSS dependencies"
+    exit 1
+fi
+
+# Initialize Tailwind CSS if not already initialized
+if [ ! -f "tailwind.config.js" ] || [ ! -f "postcss.config.js" ]; then
+    log "Initializing Tailwind CSS..."
+    npx tailwindcss init -p
+fi
+
+# Test frontend build
 log "Testing frontend build..."
 if ! npm run build; then
     error "Frontend build failed"
