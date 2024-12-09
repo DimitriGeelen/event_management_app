@@ -89,7 +89,7 @@ verify_service() {
     return 0
 }
 
-# Main installation process with improved error handling
+# Main installation process
 
 # 1. System Updates
 log "Updating system..."
@@ -138,4 +138,137 @@ retry_command 3 apt install -y nodejs
 check_command node
 check_command npm
 
-[... Continue with Docker, application setup, and service configuration with similar error handling ...]
+# 4. Docker Installation
+log "Installing Docker..."
+if ! curl -fsSL https://get.docker.com -o get-docker.sh; then
+    error "Failed to download Docker installation script"
+    exit 1
+fi
+
+chmod +x get-docker.sh
+if ! ./get-docker.sh; then
+    error "Failed to install Docker"
+    exit 1
+fi
+rm get-docker.sh
+
+# Install Docker Compose
+log "Installing Docker Compose..."
+retry_command 3 apt install -y docker-compose
+
+# Verify Docker installation
+check_command docker
+check_command docker-compose
+
+# Start and enable Docker service
+systemctl start docker
+systemctl enable docker
+
+# 5. Application Setup
+APP_DIR="/opt/event_management_app"
+log "Setting up application directory..."
+check_create_dir "$APP_DIR" "$SUDO_USER"
+
+# Clone repository
+log "Cloning repository..."
+if ! su - "$SUDO_USER" -c "git clone https://github.com/DimitriGeelen/event_management_app.git ${APP_DIR}"; then
+    error "Failed to clone repository"
+    exit 1
+fi
+
+cd "$APP_DIR"
+
+# Create environment file
+log "Creating environment file..."
+cat > .env << EOL
+MONGODB_URI=mongodb://mongodb:27017/event_management
+JWT_SECRET=$(openssl rand -base64 32)
+PORT=5000
+HOST=0.0.0.0
+NODE_ENV=production
+GRAFANA_PASSWORD=$(openssl rand -base64 12)
+MONGO_ROOT_USERNAME=admin
+MONGO_ROOT_PASSWORD=$(openssl rand -base64 12)
+EOL
+
+# Start services
+log "Starting services..."
+docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Verify services are running
+sleep 10
+verify_service "Backend API" 5000
+verify_service "Frontend" 3000
+verify_service "MongoDB" 27017
+
+# Configure Nginx
+log "Configuring Nginx..."
+cat > /etc/nginx/sites-available/event-management << EOL
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    location /api {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    location /grafana/ {
+        proxy_pass http://localhost:3000/;
+    }
+
+    location /kibana/ {
+        proxy_pass http://localhost:5601/;
+    }
+}
+EOL
+
+# Enable site and restart Nginx
+ln -sf /etc/nginx/sites-available/event-management /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+systemctl restart nginx
+
+# Configure firewall
+log "Configuring firewall..."
+ufw allow ssh
+ufw allow http
+ufw allow from 192.168.0.0/16 to any port 3000
+ufw allow from 192.168.0.0/16 to any port 5000
+ufw allow from 192.168.0.0/16 to any port 27017
+
+# Enable firewall
+echo "y" | ufw enable
+
+# Final setup
+log "Finalizing installation..."
+chown -R www-data:www-data "$APP_DIR"
+chmod -R 755 "$APP_DIR"
+
+log "Installation completed successfully!"
+log "Services are available at:"
+log "Application: http://localhost:3000"
+log "API: http://localhost:5000"
+log "Grafana: http://localhost:3000/grafana"
+log "Kibana: http://localhost:5601"
+
+log "\nCredentials:"
+log "MongoDB Root Username: admin"
+log "MongoDB Root Password: $(grep MONGO_ROOT_PASSWORD .env | cut -d'=' -f2)"
+log "Grafana Admin Password: $(grep GRAFANA_PASSWORD .env | cut -d'=' -f2)"
+
+warning "\nPlease save these credentials in a secure location!"
+warning "For security, consider changing the default passwords."
