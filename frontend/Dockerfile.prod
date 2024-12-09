@@ -1,14 +1,15 @@
 # Build stage
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files first for better caching
+COPY package.json ./
+COPY package-lock.json ./
 
 # Install dependencies
-RUN npm install --production=false
+RUN npm install
 
 # Copy app files
 COPY . .
